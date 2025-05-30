@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "in.h": "c",
-        "string.h": "c",
-        "types.h": "c",
-        "inet.h": "c",
-        "10kclient": "c"
-    }
-}
