@@ -7,6 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/fcntl.h>
+#include <time.h>
+#include <poll.h>
 
 #define PORT 8080
 #define MAX_LINE 1024
@@ -14,8 +16,8 @@
 int main()
 {
     int sockfd;
+
     struct sockaddr_in servaddr, cliaddr;
-    char *message = "Server Message";
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) // Create a new socket, in UDP use SOCK_DGRAM(datagram) for type
     {
@@ -44,23 +46,46 @@ int main()
 
     while (1)
     {
-        int len = sizeof(cliaddr); // Length of the client address structure
-        int n = recvfrom(sockfd, buffer, MAX_LINE, 0, (struct sockaddr *)&cliaddr, &len);
+        fd_set readfds;           // File descriptor set for select
+        FD_ZERO(&readfds);        // Set the file descriptor set to zero
+        FD_SET(sockfd, &readfds); // Add the socket file descriptor to the set
 
-        if (n < 0)
+        struct timeval timeout; // Timeout structure for select
+        timeout.tv_sec = 5;     // Set timeout to 5 seconds
+        timeout.tv_usec = 0;    // Set microseconds to 0
+
+        int act = select(sockfd + 1, &readfds, NULL, NULL, &timeout);
+
+        if (act < 0)
         {
-            printf("Waiting for data...\n");
-            sleep(5);
+            perror("error");
+            break;
         }
-        else
+        else if (act == 0)
         {
-            buffer[n] = '\0'; // End of the data
-            printf("Client says: %s\n", buffer);
+            perror("No data in 5 sec");
+            break;
+        }
 
-            sendto(sockfd, message, strlen(message), MSG_CONFIRM, (struct sockaddr *)&cliaddr, sizeof(cliaddr));
-            break; // Exit after sending a message
+        if (FD_ISSET(sockfd, &readfds))
+        {
+            int len = sizeof(cliaddr);
+            int n = recvfrom(sockfd, buffer, MAX_LINE, 0, (struct sockaddr *)&cliaddr, &len);
+
+            if (n < 0)
+            {
+                perror("No data recieved");
+            }
+            else
+            {
+                buffer[n] = '\0';
+                int port = ntohs(cliaddr.sin_port);
+                printf("%s - %d\n", buffer, port);
+            }
         }
     }
+
+    close(sockfd);
 
     return 0;
 }

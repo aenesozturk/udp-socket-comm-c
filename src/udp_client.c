@@ -7,9 +7,12 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/fcntl.h>
+#include <time.h>
 
 #define PORT 8080
 #define MAX_LINE 1024
+
+// TODO: 10 bin tane clientten gelen mesajı alacak
 
 int main()
 {
@@ -29,13 +32,16 @@ int main()
 
     memset(&servaddr, 0, sizeof(servaddr)); // Server IP
 
-    servaddr.sin_family = AF_INET;         // Holds IP address
-    servaddr.sin_port = htons(PORT);       // htons -> convert values between host and network byte order
-    servaddr.sin_addr.s_addr = INADDR_ANY; // Accepts connections to all the IPs
+    servaddr.sin_family = AF_INET;                     // Holds IP address
+    servaddr.sin_port = htons(PORT);                   // htons -> convert values between host and network byte order
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Accepts connections to all the IPs
 
+    sleep(5); // Wait for the server to be ready
     sendto(sockfd, message, strlen(message), MSG_CONFIRM, (struct sockaddr *)&servaddr, sizeof(servaddr));
 
     char buffer[MAX_LINE];
+
+    time_t start_time = time(NULL);
 
     while (1)
     {
@@ -44,8 +50,12 @@ int main()
 
         if (n < 0)
         {
-            printf("Waiting for data...\n");
-            sleep(5);
+            time_t current_time = time(NULL);
+            if (current_time - start_time >= 5)
+            {
+                printf("Waiting for data...\n");
+                start_time = current_time;
+            }
         }
         else
         {
